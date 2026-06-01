@@ -71,13 +71,7 @@ poetry run streamlit run solicitacoes_notebook/app_dash.py
 3. Vá em **Settings → Database → Connection string → URI**
 4. Copie a `DATABASE_URL`
 
-#### 2. Migrar dados do SQLite para o PostgreSQL
-
-```bash
-poetry run python solicitacoes_notebook/migrate_to_postgres.py
-```
-
-#### 3. Configurar secrets no Streamlit Cloud
+#### 2. Configurar secrets no Streamlit Cloud
 
 No painel do Streamlit Cloud: **App → Settings → Secrets** e cole:
 
@@ -85,7 +79,7 @@ No painel do Streamlit Cloud: **App → Settings → Secrets** e cole:
 DATABASE_URL = "postgresql://usuario:senha@host:5432/banco"
 ```
 
-#### 4. Fazer o deploy
+#### 3. Fazer o deploy
 
 1. Push para o GitHub
 2. No Streamlit Cloud: **New app → selecione o repositório**
