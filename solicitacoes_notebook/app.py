@@ -1,9 +1,5 @@
 import streamlit as st
 
-from database import criar_banco
-
-criar_banco()
-
 st.set_page_config(
     page_title="Gestão de Notebooks",
     page_icon="💻",
