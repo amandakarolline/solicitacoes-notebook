@@ -4,6 +4,14 @@ from components.footer import footer
 
 from db import get_connection, placeholder
 
+if not st.session_state.get("logado", False):
+    st.warning("🔒 Você precisa estar logado para acessar esta página.")
+    st.stop()
+
+if st.sidebar.button("Sair"):
+    st.session_state["logado"] = False
+    st.switch_page("app.py")
+
 st.set_page_config(page_title="Cadastro", page_icon="📋", layout="centered")
 
 st.title("📋 Nova Solicitação de Notebook")
