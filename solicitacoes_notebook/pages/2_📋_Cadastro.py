@@ -9,7 +9,7 @@ if not st.session_state.get("logado", False):
     st.stop()
 
 if st.sidebar.button("Sair"):
-    st.session_state["logado"] = False
+    st.session_state["logado"] = True
     st.switch_page("app.py")
 
 st.set_page_config(page_title="Cadastro", page_icon="📋", layout="centered")
