@@ -1,5 +1,6 @@
 import streamlit as st
 from datetime import date
+from components.footer import footer
 
 from db import get_connection, placeholder
 
@@ -131,3 +132,5 @@ if submitted:
             st.error("Valor inválido. Use o formato: **4.500,00**")
         except Exception as e:
             st.error(f"Erro ao salvar: {e}")
+
+footer()

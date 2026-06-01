@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+from components.footer import footer
 
 from db import get_connection
 
@@ -222,3 +223,5 @@ exibir.columns = ["Ticket","Data","Setor","Fornecedor","Solicitante","Colaborado
 st.dataframe(exibir, use_container_width=True, hide_index=True)
 csv = dff[cols].to_csv(index=False).encode("utf-8")
 st.download_button("⬇️ Exportar CSV", csv, "solicitacoes.csv", "text/csv")
+
+footer()

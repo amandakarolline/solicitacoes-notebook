@@ -1,4 +1,5 @@
 import streamlit as st
+from components.footer import footer
 
 st.set_page_config(
     page_title="Gestão de Notebooks",
@@ -16,3 +17,5 @@ st.markdown(
     - **📊 Dashboard** — analise custos, volumes e tendências
     """
 )
+
+footer()
