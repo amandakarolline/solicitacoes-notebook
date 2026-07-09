@@ -3,13 +3,10 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from components.footer import footer
-
 from db import get_connection
 
 st.set_page_config(page_title="Dashboard", page_icon="📊", layout="wide")
 
-
-# ─── Dados ────────────────────────────────────────────────────────────────────
 
 @st.cache_data(ttl=60)
 def get_data():
@@ -18,6 +15,7 @@ def get_data():
         SELECT
             s.id,
             s.ticket,
+            s.equipamento,
             s.data_solicitacao,
             s.valor,
             COALESCE(m.descricao,  'Não Informado') AS motivo,
@@ -39,6 +37,7 @@ def get_data():
     df = pd.read_sql_query(query, conn)
     conn.close()
     df["data_solicitacao"] = pd.to_datetime(df["data_solicitacao"])
+    df["equipamento"] = df["equipamento"].fillna("Não Informado").str.upper()
     return df
 
 
@@ -51,7 +50,6 @@ try:
 except Exception as e:
     st.error(f"Erro ao conectar com o banco de dados: {e}")
     st.stop()
-
 
 # ─── Sidebar – Filtros ────────────────────────────────────────────────────────
 
@@ -71,28 +69,29 @@ periodo  = st.sidebar.date_input("Período:", value=(data_min, data_max),
                                   min_value=data_min, max_value=data_max)
 data_ini, data_fim = (periodo if len(periodo) == 2 else (data_min, data_max))
 
-todos = lambda col: df[col].unique().tolist()
-status_sel  = st.sidebar.multiselect("Status:",     todos("status"),     default=todos("status"))
-motivos_sel = st.sidebar.multiselect("Motivo:",     todos("motivo"),     default=todos("motivo"))
-setores_sel = st.sidebar.multiselect("Setor:",      todos("setor"),      default=todos("setor"))
-fornec_sel  = st.sidebar.multiselect("Fornecedor:", todos("fornecedor"), default=todos("fornecedor"))
+todos = lambda col: sorted(df[col].unique().tolist())
+
+equip_sel   = st.sidebar.multiselect("Equipamento:", todos("equipamento"), default=todos("equipamento"))
+status_sel  = st.sidebar.multiselect("Status:",      todos("status"),      default=todos("status"))
+motivos_sel = st.sidebar.multiselect("Motivo:",      todos("motivo"),      default=todos("motivo"))
+setores_sel = st.sidebar.multiselect("Setor:",       todos("setor"),       default=todos("setor"))
+fornec_sel  = st.sidebar.multiselect("Fornecedor:",  todos("fornecedor"),  default=todos("fornecedor"))
 
 dff = df[
     (df["data_solicitacao"].dt.date >= data_ini) &
     (df["data_solicitacao"].dt.date <= data_fim) &
+    (df["equipamento"].isin(equip_sel)) &
     (df["status"].isin(status_sel)) &
     (df["motivo"].isin(motivos_sel)) &
     (df["setor"].isin(setores_sel)) &
     (df["fornecedor"].isin(fornec_sel))
 ]
 
-
 # ─── Header ───────────────────────────────────────────────────────────────────
 
-st.title("📊 Painel de Solicitações de Notebooks")
+st.title("📊 Painel de Solicitações de Equipamentos")
 st.caption("Acompanhamento de custos e volumetria das solicitações de infraestrutura.")
 st.divider()
-
 
 # ─── KPIs ─────────────────────────────────────────────────────────────────────
 
@@ -107,7 +106,6 @@ k2.metric("📋 Total de Solicitações", total_tickets)
 k3.metric("📊 Ticket Médio",          fmt_brl(ticket_medio))
 k4.metric("🔝 Maior Solicitação",     fmt_brl(valor_max))
 st.divider()
-
 
 # ─── Evolução mensal ──────────────────────────────────────────────────────────
 
@@ -133,6 +131,30 @@ if not mensal.empty:
     st.plotly_chart(fig, use_container_width=True)
 st.divider()
 
+# ─── Equipamento ──────────────────────────────────────────────────────────────
+
+st.markdown("### 🖥️ Análise por Equipamento")
+col_e1, col_e2 = st.columns(2)
+
+with col_e1:
+    por_equip_valor = dff.groupby("equipamento")["valor"].sum().reset_index().sort_values("valor")
+    fig = px.bar(por_equip_valor, x="valor", y="equipamento", orientation="h",
+                 title="Investimento por Equipamento",
+                 labels={"valor":"Valor (R$)","equipamento":"Equipamento"},
+                 color="valor", color_continuous_scale="Teal", text_auto=".2s")
+    fig.update_layout(coloraxis_showscale=False, yaxis_title="")
+    st.plotly_chart(fig, use_container_width=True)
+
+with col_e2:
+    por_equip_qtd = dff["equipamento"].value_counts().reset_index()
+    por_equip_qtd.columns = ["equipamento","quantidade"]
+    fig = px.pie(por_equip_qtd, values="quantidade", names="equipamento", hole=0.45,
+                 title="Distribuição por Volume (Qtd por Equipamento)",
+                 color_discrete_sequence=px.colors.qualitative.Pastel)
+    fig.update_traces(textinfo="percent+label")
+    st.plotly_chart(fig, use_container_width=True)
+
+st.divider()
 
 # ─── Análise de Causas ────────────────────────────────────────────────────────
 
@@ -152,13 +174,12 @@ with col2:
     vol = dff["motivo"].value_counts().reset_index()
     vol.columns = ["motivo","quantidade"]
     fig = px.pie(vol, values="quantidade", names="motivo", hole=0.45,
-                 title="Distribuição por Volume",
+                 title="Distribuição por Volume (Qtd por Motivo)",
                  color_discrete_sequence=px.colors.qualitative.Set3)
     fig.update_traces(textinfo="percent+label")
     st.plotly_chart(fig, use_container_width=True)
 
 st.divider()
-
 
 # ─── Setor e Fornecedor ───────────────────────────────────────────────────────
 
@@ -185,7 +206,6 @@ with col4:
 
 st.divider()
 
-
 # ─── Status ───────────────────────────────────────────────────────────────────
 
 st.markdown("### 📌 Distribuição por Status")
@@ -210,15 +230,16 @@ with col6:
 
 st.divider()
 
-
 # ─── Tabela detalhada ─────────────────────────────────────────────────────────
 
 st.markdown("### 📄 Detalhamento Completo")
-cols = ["ticket","data_solicitacao","setor","fornecedor","solicitante","colaborador","motivo","status","valor"]
+cols = ["ticket","equipamento","data_solicitacao","setor","fornecedor",
+        "solicitante","colaborador","motivo","status","valor"]
 exibir = dff[cols].sort_values("data_solicitacao", ascending=False).copy()
 exibir["data_solicitacao"] = exibir["data_solicitacao"].dt.strftime("%d/%m/%Y")
 exibir["valor"] = exibir["valor"].apply(fmt_brl)
-exibir.columns = ["Ticket","Data","Setor","Fornecedor","Solicitante","Colaborador","Motivo","Status","Valor"]
+exibir.columns = ["Ticket","Equipamento","Data","Setor","Fornecedor",
+                  "Solicitante","Colaborador","Motivo","Status","Valor"]
 
 st.dataframe(exibir, use_container_width=True, hide_index=True)
 csv = dff[cols].to_csv(index=False).encode("utf-8")

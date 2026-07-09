@@ -1,20 +1,13 @@
 import streamlit as st
 import pandas as pd
 from datetime import date
-
-from db import get_connection, placeholder
 from components.footer import footer
-
-# ─── Autenticação ─────────────────────────────────────────────────────────────
+from db import get_connection, placeholder
 
 if not st.session_state.get("logado", False):
-    st.warning("🔒 Você precisa estar logado.")
+    st.warning("🔒 Você precisa estar logado para acessar esta página.")
     st.page_link("app.py", label="Ir para o Login", icon="🔐")
     st.stop()
-
-if st.sidebar.button("Sair"):
-    st.session_state["logado"] = False
-    st.switch_page("app.py")
 
 st.set_page_config(page_title="Gerenciar", page_icon="✏️", layout="wide")
 
@@ -23,9 +16,7 @@ st.caption("Busque, edite ou exclua solicitações registradas.")
 st.divider()
 
 
-# ─── Funções auxiliares ───────────────────────────────────────────────────────
-
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=300)
 def carregar_lookup():
     conn, _ = get_connection()
     cur = conn.cursor()
@@ -44,15 +35,16 @@ def carregar_todas():
         SELECT
             s.id,
             s.ticket,
+            s.equipamento,
             s.data_solicitacao,
             s.valor,
-            COALESCE(m.descricao,  '')  AS motivo,
-            COALESCE(st.descricao, '')  AS status,
-            COALESCE(se.nome,      '')  AS setor,
-            COALESCE(f.nome,       '')  AS fornecedor,
-            COALESCE(sol.nome,     '')  AS solicitante,
-            COALESCE(col.nome,     '')  AS colaborador,
-            COALESCE(aut.nome,     '')  AS autorizado_por,
+            COALESCE(m.descricao,  '') AS motivo,
+            COALESCE(st.descricao, '') AS status,
+            COALESCE(se.nome,      '') AS setor,
+            COALESCE(f.nome,       '') AS fornecedor,
+            COALESCE(sol.nome,     '') AS solicitante,
+            COALESCE(col.nome,     '') AS colaborador,
+            COALESCE(aut.nome,     '') AS autorizado_por,
             s.motivo_id,
             s.status_id
         FROM solicitacoes s
@@ -94,8 +86,6 @@ def fmt_brl(v):
         return v
 
 
-# ─── Carrega dados ────────────────────────────────────────────────────────────
-
 motivos_db, status_db = carregar_lookup()
 motivos_map = {desc: id_ for id_, desc in motivos_db}
 status_map  = {desc: id_ for id_, desc in status_db}
@@ -107,21 +97,18 @@ df = carregar_todas()
 # ─── Busca ────────────────────────────────────────────────────────────────────
 
 st.markdown("### 🔎 Buscar registro")
-col_busca1, col_busca2 = st.columns([1, 2])
-
-with col_busca1:
+col_b1, col_b2 = st.columns([1, 2])
+with col_b1:
     ticket_busca = st.text_input("Buscar por Ticket", placeholder="ex: 24500")
 
-with col_busca2:
-    df_exibir = df.copy()
-    if ticket_busca.strip():
-        df_exibir = df_exibir[df_exibir["ticket"].str.contains(ticket_busca.strip(), case=False, na=False)]
+df_exibir = df.copy()
+if ticket_busca.strip():
+    df_exibir = df_exibir[df_exibir["ticket"].str.contains(ticket_busca.strip(), case=False, na=False)]
 
-# Tabela de seleção
-df_tabela = df_exibir[["id","ticket","data_solicitacao","setor","motivo","status","valor"]].copy()
+df_tabela = df_exibir[["id","ticket","equipamento","data_solicitacao","setor","motivo","status","valor"]].copy()
 df_tabela["data_solicitacao"] = df_tabela["data_solicitacao"].dt.strftime("%d/%m/%Y")
 df_tabela["valor"] = df_tabela["valor"].apply(fmt_brl)
-df_tabela.columns = ["ID","Ticket","Data","Setor","Motivo","Status","Valor"]
+df_tabela.columns = ["ID","Ticket","Equipamento","Data","Setor","Motivo","Status","Valor"]
 
 if df_tabela.empty:
     st.info("Nenhum registro encontrado.")
@@ -146,52 +133,54 @@ if not linhas_sel:
     footer()
     st.stop()
 
-idx = linhas_sel[0]
-reg = df_exibir.iloc[idx]
+idx    = linhas_sel[0]
+reg    = df_exibir.iloc[idx]
 reg_id = int(reg["id"])
 
 st.markdown(f"### ✏️ Editando Ticket **{reg['ticket']}**")
 
 with st.form("form_edicao"):
 
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
     with col1:
         ticket = st.text_input("Número do Ticket *", value=reg["ticket"])
     with col2:
+        equipamento = st.text_input("Equipamento *", value=reg.get("equipamento", ""))
+    with col3:
         valor_str = st.text_input(
             "Valor Total (R$) *",
             value=f"{reg['valor']:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
         )
 
-    col3, col4 = st.columns(2)
-    with col3:
-        setor = st.text_input("Setor", value=reg["setor"])
+    col4, col5 = st.columns(2)
     with col4:
+        setor = st.text_input("Setor", value=reg["setor"])
+    with col5:
         fornecedor = st.text_input("Fornecedor", value=reg["fornecedor"])
 
-    col5, col6, col7 = st.columns(3)
-    with col5:
-        solicitante = st.text_input("Solicitante", value=reg["solicitante"])
+    col6, col7, col8 = st.columns(3)
     with col6:
-        colaborador = st.text_input("Colaborador (Destino)", value=reg["colaborador"])
+        solicitante = st.text_input("Solicitante", value=reg["solicitante"])
     with col7:
+        colaborador = st.text_input("Colaborador (Destino)", value=reg["colaborador"])
+    with col8:
         autorizado = st.text_input("Autorizado por", value=reg["autorizado_por"])
 
-    col8, col9, col10 = st.columns(3)
+    col9, col10, col11 = st.columns(3)
 
     lista_motivos = [""] + list(motivos_map.keys())
     motivo_atual  = motivos_inv.get(reg["motivo_id"]) if reg["motivo_id"] else ""
     idx_motivo    = lista_motivos.index(motivo_atual) if motivo_atual in lista_motivos else 0
 
-    lista_status  = [""] + list(status_map.keys())
-    status_atual  = status_inv.get(reg["status_id"]) if reg["status_id"] else ""
-    idx_status    = lista_status.index(status_atual) if status_atual in lista_status else 0
+    lista_status = [""] + list(status_map.keys())
+    status_atual = status_inv.get(reg["status_id"]) if reg["status_id"] else ""
+    idx_status   = lista_status.index(status_atual) if status_atual in lista_status else 0
 
-    with col8:
-        motivo_sel = st.selectbox("Motivo", lista_motivos, index=idx_motivo)
     with col9:
-        status_sel = st.selectbox("Status", lista_status, index=idx_status)
+        motivo_sel = st.selectbox("Motivo", lista_motivos, index=idx_motivo)
     with col10:
+        status_sel = st.selectbox("Status", lista_status, index=idx_status)
+    with col11:
         data_sol = st.date_input(
             "Data da Solicitação",
             value=reg["data_solicitacao"].date() if pd.notna(reg["data_solicitacao"]) else date.today()
@@ -199,16 +188,16 @@ with st.form("form_edicao"):
 
     col_btn1, col_btn2 = st.columns(2)
     with col_btn1:
-        salvar = st.form_submit_button("💾 Salvar Alterações", use_container_width=True, type="primary")
+        salvar  = st.form_submit_button("💾 Salvar Alterações",  use_container_width=True, type="primary")
     with col_btn2:
-        excluir = st.form_submit_button("🗑️ Excluir Registro", use_container_width=True)
+        excluir = st.form_submit_button("🗑️ Excluir Registro",   use_container_width=True)
 
 
 # ─── Salvar ───────────────────────────────────────────────────────────────────
 
 if salvar:
-    if not ticket.strip() or not valor_str.strip():
-        st.error("Os campos **Ticket** e **Valor** são obrigatórios.")
+    if not ticket.strip() or not valor_str.strip() or not equipamento.strip():
+        st.error("Os campos **Ticket**, **Equipamento** e **Valor** são obrigatórios.")
     else:
         try:
             valor = float(valor_str.replace("R$", "").replace(".", "").replace(",", ".").strip())
@@ -227,6 +216,7 @@ if salvar:
             cur.execute(f"""
                 UPDATE solicitacoes SET
                     ticket            = {p},
+                    equipamento       = {p},
                     data_solicitacao  = {p},
                     valor             = {p},
                     motivo_id         = {p},
@@ -238,7 +228,7 @@ if salvar:
                     autorizado_por_id = {p}
                 WHERE id = {p}
             """, (
-                ticket.strip(), data_sol.isoformat(), valor,
+                ticket.strip(), equipamento.strip().upper(), data_sol.isoformat(), valor,
                 motivo_id, status_id,
                 setor_id, fornecedor_id, solicitante_id, colaborador_id, autorizado_id,
                 reg_id,
