@@ -6,12 +6,6 @@ from components.footer import footer
 
 from db import get_connection
 
-st.sidebar.page_link(
-    "pages/1_🔐_Login.py",
-    label="Área Administrativa",
-    icon="🔐"
-)
-
 st.set_page_config(page_title="Dashboard", page_icon="📊", layout="wide")
 
 

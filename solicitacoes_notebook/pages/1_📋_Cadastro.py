@@ -5,7 +5,8 @@ from components.footer import footer
 from db import get_connection, placeholder
 
 if not st.session_state.get("logado", False):
-    st.warning("🔒 Você precisa estar logado para acessar esta página.")
+    st.warning("🔒 Você precisa estar logado.")
+    st.page_link("app.py", label="Ir para o Login", icon="🔐")
     st.stop()
 
 if st.sidebar.button("Sair"):
