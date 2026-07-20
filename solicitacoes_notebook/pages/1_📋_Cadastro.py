@@ -154,26 +154,28 @@ with aba_desp:
 
     with st.form("form_despesa", clear_on_submit=True):
 
-        col1, col2 = st.columns(2)
+        col1, col2, col3 = st.columns(3)
         with col1:
-            descricao = st.text_input("Descrição *", placeholder="ex: Manutenção de impressora")
+            ticket_d = st.text_input("Número do Ticket", placeholder="ex: 24500", key="ticket_desp")
         with col2:
+            descricao = st.text_input("Descrição *", placeholder="ex: Manutenção de impressora")
+        with col3:
             valor_str_d = st.text_input("Valor (R$) *", placeholder="ex: 350,00")
 
-        col3, col4, col5 = st.columns(3)
-        with col3:
-            fornecedor_d = st.text_input("Fornecedor", placeholder="ex: TechService")
+        col4, col5, col6 = st.columns(3)
         with col4:
-            setor_d = st.text_input("Setor", placeholder="ex: TI")
+            fornecedor_d = st.text_input("Fornecedor", placeholder="ex: TechService")
         with col5:
+            setor_d = st.text_input("Setor", placeholder="ex: TI")
+        with col6:
             numero_nf_d = st.text_input("Número da NF", placeholder="ex: 789012")
 
-        col6, col7, col8 = st.columns(3)
-        with col6:
-            autorizado_d = st.text_input("Autorizado por", placeholder="Nome")
+        col7, col8, col9 = st.columns(3)
         with col7:
-            status_sel_d = st.selectbox("Status", [""] + list(status_map.keys()), key="status_desp")
+            autorizado_d = st.text_input("Autorizado por", placeholder="Nome")
         with col8:
+            status_sel_d = st.selectbox("Status", [""] + list(status_map.keys()), key="status_desp")
+        with col9:
             data_desp = st.date_input("Data", value=date.today(), key="data_desp")
 
         submitted_desp = st.form_submit_button("💾 Salvar Despesa", use_container_width=True, type="primary")
@@ -188,18 +190,18 @@ with aba_desp:
                 cur = conn.cursor()
                 p = placeholder(modo)
 
-                setor_id_d    = get_or_create(cur, modo, "setores",      "nome", setor_d)
+                setor_id_d      = get_or_create(cur, modo, "setores",      "nome", setor_d)
                 fornecedor_id_d = get_or_create(cur, modo, "fornecedores", "nome", fornecedor_d)
                 autorizado_id_d = get_or_create(cur, modo, "pessoas",      "nome", autorizado_d)
-                status_id_d   = status_map.get(status_sel_d) if status_sel_d else None
+                status_id_d     = status_map.get(status_sel_d) if status_sel_d else None
 
                 cur.execute(f"""
                     INSERT INTO despesas
-                        (descricao, data_despesa, valor, numero_nf,
+                        (ticket, descricao, data_despesa, valor, numero_nf,
                          setor_id, fornecedor_id, autorizado_por_id, status_id)
-                    VALUES ({p},{p},{p},{p},{p},{p},{p},{p})
+                    VALUES ({p},{p},{p},{p},{p},{p},{p},{p},{p})
                 """, (
-                    descricao.strip(), data_desp.isoformat(), valor_d,
+                    ticket_d.strip() or None, descricao.strip(), data_desp.isoformat(), valor_d,
                     numero_nf_d.strip() or None,
                     setor_id_d, fornecedor_id_d, autorizado_id_d, status_id_d,
                 ))

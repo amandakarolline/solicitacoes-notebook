@@ -65,7 +65,7 @@ def carregar_despesas():
     conn, _ = get_connection()
     query = """
         SELECT
-            d.id, d.descricao, d.data_despesa, d.valor, d.numero_nf,
+            d.id, d.ticket, d.descricao, d.data_despesa, d.valor, d.numero_nf,
             COALESCE(st.descricao, '') AS status,
             COALESCE(se.nome,      '') AS setor,
             COALESCE(f.nome,       '') AS fornecedor,
@@ -273,10 +273,10 @@ with aba_desp:
     if desc_busca.strip():
         df_dp_ex = df_dp_ex[df_dp_ex["descricao"].str.contains(desc_busca.strip(), case=False, na=False)]
 
-    df_dp_tab = df_dp_ex[["id","descricao","data_despesa","setor","fornecedor","status","valor","numero_nf"]].copy()
+    df_dp_tab = df_dp_ex[["id","ticket","descricao","data_despesa","setor","fornecedor","status","valor","numero_nf"]].copy()
     df_dp_tab["data_despesa"] = df_dp_tab["data_despesa"].dt.strftime("%d/%m/%Y")
     df_dp_tab["valor"] = df_dp_tab["valor"].apply(fmt_brl)
-    df_dp_tab.columns = ["ID","Descrição","Data","Setor","Fornecedor","Status","Valor","NF"]
+    df_dp_tab.columns = ["ID","Ticket","Descrição","Data","Setor","Fornecedor","Status","Valor","NF"]
 
     if df_dp_tab.empty:
         st.info("Nenhuma despesa encontrada.")
@@ -294,31 +294,33 @@ with aba_desp:
             st.markdown(f"### ✏️ Editando: **{reg['descricao']}**")
 
             with st.form("form_dp_edicao"):
-                col1, col2 = st.columns(2)
+                col1, col2, col3 = st.columns(3)
                 with col1:
-                    descricao = st.text_input("Descrição *", value=reg["descricao"])
+                    ticket_d = st.text_input("Número do Ticket", value=reg.get("ticket") or "")
                 with col2:
+                    descricao = st.text_input("Descrição *", value=reg["descricao"])
+                with col3:
                     valor_str_d = st.text_input("Valor (R$) *",
                         value=f"{reg['valor']:,.2f}".replace(",","X").replace(".",",").replace("X","."))
 
-                col3, col4, col5 = st.columns(3)
-                with col3:
-                    fornecedor_d = st.text_input("Fornecedor", value=reg["fornecedor"])
+                col4, col5, col6 = st.columns(3)
                 with col4:
-                    setor_d = st.text_input("Setor", value=reg["setor"])
+                    fornecedor_d = st.text_input("Fornecedor", value=reg["fornecedor"])
                 with col5:
+                    setor_d = st.text_input("Setor", value=reg["setor"])
+                with col6:
                     numero_nf_d = st.text_input("Número da NF", value=reg.get("numero_nf") or "")
 
-                col6, col7, col8 = st.columns(3)
+                col7, col8, col9 = st.columns(3)
                 lista_status = [""] + list(status_map.keys())
                 status_atual = status_inv.get(reg["status_id"]) if reg["status_id"] else ""
                 idx_status   = lista_status.index(status_atual) if status_atual in lista_status else 0
 
-                with col6:
-                    autorizado_d = st.text_input("Autorizado por", value=reg["autorizado_por"])
                 with col7:
-                    status_sel_d = st.selectbox("Status", lista_status, index=idx_status, key="status_dp_ed")
+                    autorizado_d = st.text_input("Autorizado por", value=reg["autorizado_por"])
                 with col8:
+                    status_sel_d = st.selectbox("Status", lista_status, index=idx_status, key="status_dp_ed")
+                with col9:
                     data_desp = st.date_input("Data",
                         value=reg["data_despesa"].date() if pd.notna(reg["data_despesa"]) else date.today(),
                         key="data_dp_ed")
@@ -344,10 +346,10 @@ with aba_desp:
                         status_id_d     = status_map.get(status_sel_d) if status_sel_d else None
                         cur.execute(f"""
                             UPDATE despesas SET
-                                descricao={p}, data_despesa={p}, valor={p}, numero_nf={p},
+                                ticket={p}, descricao={p}, data_despesa={p}, valor={p}, numero_nf={p},
                                 setor_id={p}, fornecedor_id={p}, autorizado_por_id={p}, status_id={p}
                             WHERE id={p}
-                        """, (descricao.strip(), data_desp.isoformat(), valor_d,
+                        """, (ticket_d.strip() or None, descricao.strip(), data_desp.isoformat(), valor_d,
                               numero_nf_d.strip() or None,
                               setor_id_d, fornecedor_id_d, autorizado_id_d, status_id_d, reg_id))
                         conn.commit()

@@ -133,6 +133,7 @@ def criar_banco():
         cursor.execute(f"""
             CREATE TABLE IF NOT EXISTS despesas (
                 id                {pk},
+                ticket            TEXT,
                 descricao         TEXT NOT NULL,
                 data_despesa      DATE NOT NULL DEFAULT {today},
                 valor             {num} NOT NULL,
@@ -147,6 +148,7 @@ def criar_banco():
         cursor.execute(f"""
             CREATE TABLE IF NOT EXISTS despesas (
                 id                {pk},
+                ticket            TEXT,
                 descricao         TEXT NOT NULL,
                 data_despesa      DATE NOT NULL DEFAULT {today},
                 valor             {num} NOT NULL,
