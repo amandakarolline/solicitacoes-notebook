@@ -385,4 +385,4 @@ with aba_desp:
                         st.session_state.pop("confirmar_dp", None)
                         st.rerun()
 
-footer()postgresql://postgres:fWAOWstWzbZs1vUK@db.dpymalhimfngrwuauzff.supabase.co:5432/postgres
+footer()
